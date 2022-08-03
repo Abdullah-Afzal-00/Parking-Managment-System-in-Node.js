@@ -40,7 +40,7 @@ router.put("/update", auth.isToken, auth.isAdmin, (req, res) => {
 });
 
 //----------------Displaying Floors -----------------------//
-router.get("/showAll", auth.isToken, auth.isAdmin, (req, res) => {
+router.get("/showAll", auth.isToken, auth.isUser, (req, res) => {
   Floor.find()
     .populate()
     .exec((err, result) => {
@@ -53,9 +53,9 @@ router.get("/showAll", auth.isToken, auth.isAdmin, (req, res) => {
 });
 
 //--------------Deleting Floor----------------------//
-router.delete("/delete", auth.isToken, auth.isAdmin, async (req, res) => {
+router.delete("/delete/:id", auth.isToken, auth.isAdmin, async (req, res) => {
   try {
-    const floor = await Floor.findOne({ floorNo: req.body.floorNo });
+    const floor = await Floor.findOne({ floorNo: req.params.id });
     if (floor) {
       floor.remove();
       res.send("Floor deleted successfully!");

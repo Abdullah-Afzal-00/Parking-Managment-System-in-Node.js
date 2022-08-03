@@ -49,6 +49,7 @@ UserSchema.methods.validPassword = function (password) {
 
 UserSchema.methods.setPassword = function (password) {
   this.salt = crypto.randomBytes(16).toString("hex");
+  console.log(this.salt);
   this.hash = crypto
     .pbkdf2Sync(password, this.salt, 10000, 512, "sha512")
     .toString("hex");
@@ -74,6 +75,7 @@ UserSchema.methods.toAuthJSON = function () {
     token: this.generateJWT(),
     email: this.email,
     username: this.username,
+    name: this.name,
     role: this.role,
   };
 };

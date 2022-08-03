@@ -40,14 +40,25 @@ router.post("/login", async (req, res) => {
   }
 });
 
+//---------Getting a user--------------//
+router.get("/getUser", auth.isToken, async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.user.email });
+    //console.log(user);
+    res.status(200).send(user.toAuthJSON());
+  } catch {
+    res.status(400).send("Something Went Wrong");
+  }
+});
+
 //-----------Updating User--------//
 
-router.post("/updateUser", auth.isToken, auth.isUser, async (req, res) => {
+router.put("/updateUser", auth.isToken, auth.isUser, async (req, res, next) => {
   try {
     const name = req.body.name;
-    const username = req.body.username;
-    if (!(name && username)) {
-      res.status(400).send("All input is required");
+    if (!name) {
+      //res.status(400).send("All input is required");
+      return next(new httpResponse.BadRequestResponse("All input is required"));
     }
     console.log(req.user.email);
     const oldUser = await User.findOne({ email: req.user.email });
@@ -55,7 +66,6 @@ router.post("/updateUser", auth.isToken, auth.isUser, async (req, res) => {
 
     if (oldUser) {
       oldUser.name = name;
-      oldUser.username = username;
       oldUser.save().then(() => res.status(200).send(oldUser));
     } else {
       res.status(404).send("User Not Found!");
@@ -93,19 +103,24 @@ router.post("/changePassword", auth.isToken, async function (req, res) {
 });
 
 //----------Delete User----------------//
-router.delete("/deleteUser", auth.isToken, auth.isAdmin, async (req, res) => {
-  try {
-    const olduser = await User.findOne({ email: req.body.email });
-    if (olduser) {
-      olduser.remove();
-      res.send("User deleted successfully!");
-    } else {
-      res.status(404).send("User not found!");
+router.delete(
+  "/deleteUser/:id",
+  auth.isToken,
+  auth.isAdmin,
+  async (req, res) => {
+    try {
+      const olduser = await User.findOne({ email: req.params.id });
+      if (olduser) {
+        olduser.remove();
+        res.send("User deleted successfully!");
+      } else {
+        res.status(404).send("User not found!");
+      }
+    } catch (err) {
+      console.log(err);
     }
-  } catch (err) {
-    console.log(err);
   }
-});
+);
 //----------View All Users----------------// -->For Admin
 router.get("/allUsers", auth.isToken, auth.isAdmin, async (req, res) => {
   try {

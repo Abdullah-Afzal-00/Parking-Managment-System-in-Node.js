@@ -16,27 +16,21 @@ router.post("/register", auth.isToken, auth.isUser, (req, res, next) => {
     const booking = new Booking();
     Vehicle.findOne({ numberPlate: req.body.numberPlate }, (err, vehicle) => {
       if (!err && vehicle === null) {
-        next(new BadRequestResponse({ message: "Vehicle is not in database" }));
+        return next(new BadRequestResponse("Vehicle is not in database"));
         //res.send("vehicle must be registered first!");
       } else {
         Booking.findOne({ vehicles: vehicle._id }, (err, data) => {
           //vehicle._id
           if (!err && data) {
-            next(
-              new BadRequestResponse({
-                message: "Vehicle is already registered",
-              })
+            return next(
+              new BadRequestResponse("Vehicle is already registered")
             );
             //res.send("Vehicle is Already Booked").status('422');
           } else {
             Floor.findOne({ floorNo: req.body.floorNo }, (err, result) => {
               if (!err && result) {
                 if (result.slots[req.body.slotNo].isFree === false) {
-                  next(
-                    new BadRequestResponse({
-                      message: "Spot is already booked",
-                    })
-                  );
+                  return next(new BadRequestResponse("Spot is already booked"));
                   //res.send("Spot is already Booked!");
                 } else {
                   result.slots[req.body.slotNo].isFree = false;
@@ -50,15 +44,17 @@ router.post("/register", auth.isToken, auth.isUser, (req, res, next) => {
                   booking.save().then((result) => {
                     if (result) {
                       //next(new OkResponse({message:"Booking created successfully"}));
-                      res.status(200).send(result);
+                      return res.status(200).send(result);
                     } else {
-                      next(new BadRequestResponse("Error while booking"));
+                      return next(
+                        new BadRequestResponse("Error while booking")
+                      );
                       //res.send("Error while booking!\n");
                     }
                   });
                 }
               } else {
-                next(new BadRequestResponse("Floor not found"));
+                return next(new BadRequestResponse("Floor not found"));
                 //res.status(404).send("Floor Not Found!");
               }
             });
@@ -114,10 +110,10 @@ router.post("/calculate", auth.isToken, (req, res, next) => {
   }
 });
 
-router.delete("/delete", auth.isToken, async (req, res, next) => {
+router.delete("/delete/:id", auth.isToken, async (req, res, next) => {
   try {
     const vehicle = await Vehicle.findOne({
-      numberPlate: req.body.numberPlate,
+      numberPlate: req.params.id,
     });
     if (!vehicle) res.status(401).send("No vehicle found in Bookings");
     Booking.findOne(
@@ -135,7 +131,7 @@ router.delete("/delete", auth.isToken, async (req, res, next) => {
           data.remove();
           res.status(200).send("deleted");
         } else {
-          next(new BadRequestResponse("Fail to delete"));
+          next(new BadRequestResponse("You can delete only your Booking"));
         }
       }
     );
@@ -143,6 +139,39 @@ router.delete("/delete", auth.isToken, async (req, res, next) => {
     next(new BadRequestResponse("Something went wrong"));
   }
 });
+
+//----------------------Delete By Admin----------------------//
+router.delete(
+  "/deleteAny/:id",
+  auth.isToken,
+  auth.isAdmin,
+  async (req, res, next) => {
+    try {
+      const vehicle = await Vehicle.findOne({
+        numberPlate: req.params.id,
+      });
+      if (!vehicle) res.status(401).send("No vehicle found in Bookings");
+      Booking.findOne({ vehicles: vehicle._id.toString() }, (err, data) => {
+        if (!err && data) {
+          Floor.findOne({ floorNo: data.floors }, (err, result) => {
+            //console.log(result.slots[data.slotNo]);
+            if (!err && result) {
+              result.slots[data.slotNo].isFree = true;
+              result.save();
+            } else next(new BadRequestResponse("Fail to free slot"));
+            //console.log(result.slots[data.slotNo]);
+          });
+          data.remove();
+          res.status(200).send("deleted");
+        } else {
+          next(new BadRequestResponse("Fail to Delete"));
+        }
+      });
+    } catch (err) {
+      next(new BadRequestResponse("Something went wrong"));
+    }
+  }
+);
 
 router.get("/show", (req, res, next) => {
   try {
